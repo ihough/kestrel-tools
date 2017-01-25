@@ -11,7 +11,7 @@ name and matches locations from the gpx file to observations in the csv file
 based on time. Where no location is perfectly coincident with an observation it
 uses linear interpolation between the previous and subsequent locations. The
 merged data is written to a new 'located_data' subdirectory and processed original
-files are moved to a new 'processed' subdirectory.
+files are moved to a new 'original_data' subdirectory.
 
 Caveats
     * Corresponding files must have the same name (e.g. foo.gpx and foo.csv)
@@ -65,9 +65,9 @@ def get_gpx_files(target_dir):
     return gpx_files
 
 
-# Ensure the target directory contains 'originals' and 'located_data' subdirectories
+# Ensure the target directory contains 'original_data' and 'located_data' subdirectories
 def setup_dirs(target_dir):
-    originals_dir = os.path.join(target_dir, 'originals')
+    originals_dir = os.path.join(target_dir, 'original_data')
     if not os.path.isdir(originals_dir):
         os.mkdir(originals_dir)
 
