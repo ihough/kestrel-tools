@@ -10,7 +10,7 @@ observations in a csv file exported from Kestrel Link. It matches files based on
 name and matches locations from the gpx file to observations in the csv file
 based on time. Where no location is perfectly coincident with an observation it
 uses linear interpolation between the previous and subsequent locations. The
-merged data is written to a new 'merged' subdirectory and processed original
+merged data is written to a new 'located_data' subdirectory and processed original
 files are moved to a new 'processed' subdirectory.
 
 Caveats
@@ -65,17 +65,17 @@ def get_gpx_files(target_dir):
     return gpx_files
 
 
-# Ensure the target directory contains 'originals' and 'merged' subdirectories
+# Ensure the target directory contains 'originals' and 'located_data' subdirectories
 def setup_dirs(target_dir):
     originals_dir = os.path.join(target_dir, 'originals')
     if not os.path.isdir(originals_dir):
         os.mkdir(originals_dir)
 
-    merged_dir = os.path.join(target_dir, 'merged')
-    if not os.path.isdir(merged_dir):
-        os.mkdir(merged_dir)
+    located_dir = os.path.join(target_dir, 'located_data')
+    if not os.path.isdir(located_dir):
+        os.mkdir(located_dir)
 
-    return originals_dir, merged_dir
+    return originals_dir, located_dir
 
 
 # Find the kestrel data file corresponding to the gpx file
@@ -85,7 +85,7 @@ def get_kestrel_file(gpx_file):
 
 
 # Merge the gpx and kestrel data files
-def merge_gpx_kestrel(gpx_path, kestrel_path, merged_path):
+def merge_gpx_kestrel(gpx_path, kestrel_path, located_path):
     # Load all points in the gpx file
     with open(gpx_path, 'r') as gpx_file:
         gpx = gpxpy.parse(gpx_file)
@@ -95,24 +95,24 @@ def merge_gpx_kestrel(gpx_path, kestrel_path, merged_path):
             point.time = pytz.utc.localize(point.time)
             points.append(point)
 
-    with open(merged_path, 'w') as merged_file:
+    with open(located_path, 'w') as located_file:
         with open(kestrel_path, 'r') as kestrel_file:
             # Write the preface rows unchanged
             for i in range(9):
-                merged_file.write(next(kestrel_file))
+                located_file.write(next(kestrel_file))
 
             # Read and clean the data headers from the kestrel file
             kestrel_reader = csv.DictReader(kestrel_file)
             while kestrel_reader.fieldnames[-1] == '':
                 kestrel_reader.fieldnames.pop()
 
-            # Add location headers and write to the merged file
+            # Add location headers and write to the located file
             headers = kestrel_reader.fieldnames + ['latitude', 'longitude', 'elevation']
-            merged_writer = csv.DictWriter(merged_file, fieldnames=headers)
-            merged_writer.writeheader()
+            located_writer = csv.DictWriter(located_file, fieldnames=headers)
+            located_writer.writeheader()
 
             # Write the units row unchanged
-            merged_file.write(next(kestrel_file))
+            located_file.write(next(kestrel_file))
 
             # Merge the gpx and kestrel files
             for row in kestrel_reader:
@@ -151,8 +151,8 @@ def merge_gpx_kestrel(gpx_path, kestrel_path, merged_path):
                             row.update({ 'longitude': before_point.longitude + (elapsed * longitude_rate) })
                             row.update({ 'elevation': before_point.elevation + (elapsed * elevation_rate) })
 
-                # Write the merged data
-                merged_writer.writerow(row)
+                # Write the located data
+                located_writer.writerow(row)
 
 
 def run(paths):
@@ -174,18 +174,18 @@ def run(paths):
             if not os.path.isfile(kestrel_file):
                 print('  ' + gpx_filename + ' - No matching kestrel file - skipping')
             else:
-                # Set up subdirectories for original and merged files
-                originals_dir, merged_dir = setup_dirs(target_dir)
+                # Set up subdirectories for original and located files
+                originals_dir, located_dir = setup_dirs(target_dir)
 
-                # Build a path for the merged file
+                # Build a path for the located file
                 kestrel_filename = os.path.basename(kestrel_file)
                 name, ext = os.path.splitext(kestrel_filename)
-                merged_filename = name + '-located' + ext
-                merged_file = os.path.join(merged_dir, merged_filename)
+                located_filename = name + '-located' + ext
+                located_file = os.path.join(located_dir, located_filename)
 
-                # Merge the gpx and kestrel data files in the 'merged' directory
-                merge_gpx_kestrel(gpx_file, kestrel_file, merged_file)
-                print('  ' + gpx_filename + ' + ' + kestrel_filename + ' -> ' + merged_filename)
+                # Merge the gpx and kestrel data files in the 'located_data' directory
+                merge_gpx_kestrel(gpx_file, kestrel_file, located_file)
+                print('  ' + gpx_filename + ' + ' + kestrel_filename + ' -> ' + located_filename)
 
                 # Move the original gpx and kestrel files to the 'originals' directory
                 os.rename(gpx_file, os.path.join(originals_dir, gpx_filename))
